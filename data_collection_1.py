@@ -21,9 +21,12 @@ scrollable_div = wd.find_element(By.CSS_SELECTOR, "#QA0Szd > div > div > div.w6V
 time.sleep(2)
 
 for i in range(3000):
-    scrollable_div.send_keys(Keys.END) 
-    time.sleep(1)
-
+    try: 
+        scrollable_div.send_keys(Keys.END) 
+        time.sleep(1)
+    except: 
+        continue
+    
 html = wd.page_source
 bs_obj = BeautifulSoup(html, "html.parser")
 div = bs_obj.find("div", {"class" : "m6QErb XiKgde"}) 
