@@ -46,3 +46,16 @@ reviews = div.findAll("div", {"class":"jftiEf fontBodyMedium"})
 
 print(reviews)
 
+for i in reviews:
+     try:
+         ID = i.find("div", {"class":"d4r55"})
+         Date = i.find("span", {"class":"rsqaWe"})
+         r_temp = i.find("span", {"class":"kvMYJc"})
+         r = r_temp["aria-label"]
+         contents = i.find("span", {"class":"wiI7pd"})
+         contents_text = contents.text if contents else None #값 있을 때, 없을 때
+         row = [ID.text, Date.text, r, contents_text]
+         data.append(row)
+     except:
+             continue
+df = pd.DataFrame(data, columns=col)
