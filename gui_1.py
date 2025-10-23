@@ -7,7 +7,7 @@ def recommend():
         result_label.config(text="키워드를 먼저 선택해주세요!")
     else:
         # 나중에 키워드 매칭 코드랑 연결
-        result_label.config(text=f"'{selected_keyword}'에 맞는 국밥집 추천 중...")
+        result_label.config(text="'{}'에 맞는 국밥집 추천 중...".format(selected_keyword))
 
 root = tk.Tk()
 root.title("부산 국밥집 추천기")
@@ -15,8 +15,8 @@ root.title("부산 국밥집 추천기")
 # 안내 문구
 ttk.Label(root, text="다음 키워드 중 원하는 것을 선택하세요:").pack(pady=5)
 
-# 선택 가능한 키워드 목록
-keywords = ["가성비", "24시간", "역 근처", "혼밥", "전통", "맑은국물", "진한국물"]
+# 선택 가능한 키워드 목록 (이후 분석 결과에 맞게 수정 예정)
+keywords = ["가성비", "24시간", "부산역", "광안리", "혼밥", "전통", "맑은국물", "진한국물"]
 keyword_var = tk.StringVar()
 
 # 콤보박스 생성
