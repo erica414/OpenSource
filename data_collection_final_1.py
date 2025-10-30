@@ -6,100 +6,57 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.keys import Keys
-
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException  # TimeoutException을 import
-import re  # 숫자 추출용
 
+# 국밥집 리뷰창 URL
 url = 'https://www.google.com/maps/place/%EC%88%98%EB%9D%BC%EB%8F%BC%EC%A7%80%EA%B5%AD%EB%B0%A5/data=!4m8!3m7!1s0x3568ecf12202becd:0x58eb4205927036a6!8m2!3d35.1360893!4d129.0993841!9m1!1b1!16s%2Fg%2F11bwymmvb8?entry=ttu&g_ep=EgoyMDI1MTAyOC4wIKXMDSoASAFQAw%3D%3D'
+# 웹드라이버 실행
 wd = webdriver.Chrome()
 wd.get(url)
 time.sleep(2)
 
-# 정렬 버튼 클릭
+# 정렬버튼 클릭 -> 최신순
 address = "#QA0Szd > div > div > div.w6VYqd > div:nth-child(2) > div > div.e07Vkf.kA9KIf > div > div > div.m6QErb.DxyBCb.kA9KIf.dS8AEf.XiKgde > div.m6QErb.Pf6ghf.XiKgde.KoSBEe.ecceSd.tLjsW > div.TrU0dc.kdfrQc.NUqjXc > button"
 wd.find_element(By.CSS_SELECTOR, address).click()
 time.sleep(2)
 
-# 최신순으로 변경
 address1 = "#action-menu > div > div:nth-child(2)"
 wd.find_element(By.CSS_SELECTOR, address1).click()
 time.sleep(2)
 
-# 스크롤 할 영역 선택 
-scrollable_div = wd.find_element(By.CSS_SELECTOR, "#QA0Szd > div > div > div.w6VYqd > div:nth-child(2) > div > div.e07Vkf.kA9KIf > div > div > div.m6QErb.DxyBCb.kA9KIf.dS8AEf.XiKgde")
+scrollable_div = wd.find_element(By.CSS_SELECTOR,
+    "#QA0Szd > div > div > div.w6VYqd > div:nth-child(2) > div > div.e07Vkf.kA9KIf > div > div > div.m6QErb.DxyBCb.kA9KIf.dS8AEf.XiKgde")
 time.sleep(2)
-
-# 전체 리뷰 수 파싱
-# 1차: 장소 헤더 구조(F7nice), 2차: 리뷰 패널 내부(RWgCYc)
-total_text = None
-try:
-    total_text = wd.find_element(By.CSS_SELECTOR, "div.F7nice span[aria-label]").get_attribute("aria-label")
-except Exception:
-    try:
-        total_text = wd.find_element(By.CSS_SELECTOR, "div.m6QErb span.RWgCYc").text
-    except Exception as e:
-        # 전체 리뷰 수 파싱 실패
-        total_number = None
-
-if total_text:
-    try:
-        total_number = int(re.sub(r'[^0-9]', '', total_text))
-        #print(f"전체 리뷰 수 감지: {total_number}개")
-    except Exception as e:
-        # 숫자 변환 실패
-        total_number = None
-else:
-    total_number = None
-
-# 사용자 입력 값 받기. 없거나 잘못되면 None
-try:
-    user_input = input("크롤링할 리뷰 개수를 입력하세요 (Enter 시 전체 수집/자동정지 사용): ")
-    user_count = int(user_input) if user_input.strip() != "" else None
-except ValueError:
-    # 유효하지 않은 입력값이면 무한 크롤링 -> 10회 이상 같은 값 유지 시 종료
-    user_count = None
-
-# 목표치 기반 종료를 사용할지, 안정 종료만 사용할지 결정
-use_target_threshold = False
-if (total_number is not None) or (user_count is not None):
-    # 둘 중 하나라도 있으면 목표치 기반 종료를 활성화
-    if total_number is None:
-        target_review_count = user_count
-    elif user_count is None:
-        target_review_count = total_number
-    else:
-        target_review_count = min(total_number, user_count)
-    use_target_threshold = True
-    print(f"수집 목표 리뷰 수: {target_review_count}개")
-else:
-    # 둘 다 없으면 기본값 지정하지 않고 '안정 종료(연속 동일 개수 10회)'만 사용
-    target_review_count = None
 
 #리뷰 하나당 개수를 세기 위한 클래스 이름
 review_selector = "div.jJc9Ad"
 
+# 수집할 리뷰 개수 설정
+total_review_count = 3000  # 목표 리뷰 수
+
 # 스크롤 전, 현재 로드된 리뷰 개수 확인
+# find_element's'를 사용해서 클래스 이름과 일치한 요소를 찾고 리스트에 담아줌. 이 리스트의 개수를 계속 비교
 last_review_count = len(wd.find_elements(By.CSS_SELECTOR, review_selector))
 print(f"스크롤 시작 전 리뷰 개수: {last_review_count}")
 
 # 안정 종료 카운터
 stable_count = 0
-STABLE_LIMIT = 10  # 네트워크 지연 고려하여 여유있게 10회
+STABLE_LIMIT = 10  # 10회 연속 증가 없으면 종료
 
-#반복문
+# 스크롤 반복문
 while True:
     try:
         current_review_count = len(wd.find_elements(By.CSS_SELECTOR, review_selector))
         print(f"현재까지 로드된 리뷰 개수: {current_review_count}")
-        
-        # (옵션) 목표 개수 도달 시 종료
-        if use_target_threshold and (current_review_count >= target_review_count):
-            print(f"목표 리뷰 개수({target_review_count}개) 이상을 로드하여 스크롤을 종료합니다.")
+
+        # 목표 리뷰 개수 이상이면 종료
+        if current_review_count >= total_review_count:
+            print(f"목표 리뷰 개수({total_review_count}개) 이상 로드됨 → 스크롤 종료")
             break
 
-        # 안정 종료 체크: 연속 10회 증가 없음 → 종료
+        # 10회 연속 변화 없음 → 자동 종료
         if current_review_count == last_review_count:
             stable_count += 1
         else:
@@ -108,26 +65,28 @@ while True:
         if stable_count >= STABLE_LIMIT:
             print(f"리뷰 개수 증가 없음 ({STABLE_LIMIT}회 연속) → 스크롤 종료")
             break
-        
-        # 스크롤
+
+        # 스크롤 실행
         scrollable_div.send_keys(Keys.END)
         time.sleep(2)
-        
-        # 기준 업데이트
+
+        # 기준값 갱신
         last_review_count = current_review_count
-        
-    except Exception as e:  # as e는 오류의 내용을 변수에 저장하는 코드
+
+    except Exception as e:
         print(f"스크롤 중 오류 발생: {e}")
         break
 
 html = wd.page_source
 bs_obj = BeautifulSoup(html, "html.parser")
-div = bs_obj.find("div", {"class" : "m6QErb XiKgde"}) 
-reviews = div.findAll("div", {"class":"jftiEf fontBodyMedium"})
+div = bs_obj.find("div", {"class": "m6QErb XiKgde"})
+reviews = div.findAll("div", {"class": "jftiEf fontBodyMedium"})
 
+# 브라우저 종료
 wd.quit()
 
-# 수집한 데이터를 데이터프레임 형태로 변환
+
+# 데이터프레임으로 변환
 data1 = []
 col = ['작성자', '날짜', '평점', '리뷰']
 
@@ -142,7 +101,8 @@ for i in reviews:
         row = [ID.text, Date.text, r, contents_text]
         data1.append(row)
     except:
-            continue
+        continue
+
 df = pd.DataFrame(data1, columns=col)
 
 # 폴더 경로 입력
