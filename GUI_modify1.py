@@ -1,83 +1,103 @@
 import tkinter as tk
 from tkinter import ttk
-from tkinter import font as tkfont
 
-# ---------------- 색상 팔레트 ----------------
-BG_COLOR       = "#F6F1E7"   # 크림톤 한지색
-CARD_BG        = "#FBF7EE"
-WOOD_BROWN     = "#8B5E34"   # 갈색
-ACCENT_BRICK   = "#B85C38"   # 벽돌색 포인트
-SUBTEXT        = "#4A4036"
-PLACEHOLDER    = "키워드를 선택하세요"
-
-# ---------------- 키워드 목록 ----------------
-keywords = [
-    "가성비", "24시간", "부산역", "광안리", "혼밥", "전통",
-    "맑은국물", "진한국물", "현지인 맛집", "진한 육수", "양 푸짐한", "혼밥하기 좋은"
+# 우리가 선택한 10개 국밥집 데이터
+RESTAURANTS = [
+    {"name": "본천돼지국밥", "area": "부산역"},
+    {"name": "수변최고돼지국밥", "area": "민락본점"},
+    {"name": "합천일류돼지국밥", "area": "사상"},
+    {"name": "영진돼지국밥", "area": "신평"},
+    {"name": "엄용백돼지국밥", "area": "해운대"},
+    {"name": "합천국밥집", "area": "용호동"},
+    {"name": "안목", "area": "남천동"},
+    {"name": "60년전통 할매국밥", "area": "범일동"},
+    {"name": "수라국밥", "area": "경성대점"},
+    {"name": "쌍둥이국밥", "area": "본점"},
 ]
-keywords = list(dict.fromkeys(keywords))  # 중복 제거
 
-# ---------------- 함수 ----------------
+def show_recommend_frame():
+    list_frame.pack_forget()
+    recommend_frame.pack(fill="both", expand=True)
+
+def show_list_frame():
+    recommend_frame.pack_forget()
+    list_frame.pack(fill="both", expand=True)
+
 def recommend():
-    selected = keyword_var.get()
-    if selected == PLACEHOLDER:
-        result_label.config(text="⚠️ 키워드를 먼저 선택해주세요.")
-        return
-    result_label.config(
-        text=f"‘{selected}’ 키워드에 맞는 국밥집 추천 중..."
-    )
+    selected_keyword = keyword_var.get()
+    if not selected_keyword:
+        result_label.config(text="키워드를 먼저 선택해주세요!")
+    else:
+        # 나중에 키워드 매칭 추천 로직이랑 연결하면 됨
+        result_label.config(text=f"'{selected_keyword}'에 맞는 국밥집 추천 중...")
 
-# ---------------- 폰트 자동 선택 ----------------
-def pick_korean_font(root):
-    candidates = ["나눔명조", "본고딕", "Noto Serif CJK KR", "서울남산체", "맑은 고딕"]
-    available = set(tkfont.families(root))
-    for f in candidates:
-        if f in available:
-            return f
-    return "TkDefaultFont"
-
-# ---------------- GUI ----------------
 root = tk.Tk()
-root.title("🍲 부산 국밥집 추천기")
-root.geometry("480x340")
-root.configure(bg=BG_COLOR)
-root.eval('tk::PlaceWindow . center')
+root.title("부산 국밥집 추천기")
+root.geometry("480x320")
 
-base_font = pick_korean_font(root)
+# 메뉴바
+menubar = tk.Menu(root)
 
-# 카드 프레임
-card = tk.Frame(root, bg=CARD_BG, bd=2, relief="ridge")
-card.place(relx=0.5, rely=0.5, anchor="center", width=420, height=250)
+view_menu = tk.Menu(menubar, tearoff=0)
+view_menu.add_command(label="키워드 추천 화면", command=show_recommend_frame)
+view_menu.add_command(label="식당 리스트 보기", command=show_list_frame)
 
-# 제목
-tk.Label(card, text="부산 국밥집 추천기", bg=CARD_BG, fg=WOOD_BROWN,
-         font=(base_font, 18, "bold")).pack(pady=(20, 8))
+menubar.add_cascade(label="메뉴", menu=view_menu)
+root.config(menu=menubar)
 
-# 안내문
-tk.Label(card, text="다음 키워드 중 원하는 것을 선택하세요:",
-         bg=CARD_BG, fg=SUBTEXT, font=(base_font, 11)).pack(pady=(0, 8))
+# 공통 스타일
+style = ttk.Style()
+style.configure("TLabel", font=("맑은 고딕", 11))
+style.configure("TButton", font=("맑은 고딕", 10))
+style.configure("Treeview.Heading", font=("맑은 고딕", 10, "bold"))
 
-# 콤보박스
-keyword_var = tk.StringVar(value=PLACEHOLDER)
-combo = ttk.Combobox(card, textvariable=keyword_var, state="readonly", width=28)
-combo["values"] = [PLACEHOLDER] + keywords
-combo.current(0)
+# 추천 화면 프레임
+recommend_frame = ttk.Frame(root, padding=10)
+
+ttk.Label(recommend_frame, text="다음 키워드 중 원하는 것을 선택하세요:").pack(pady=5)
+
+keywords = ["가성비", "24시간", "역 근처", "혼밥", "전통", "맑은국물", "진한국물"]
+keyword_var = tk.StringVar()
+
+combo = ttk.Combobox(
+    recommend_frame,
+    textvariable=keyword_var,
+    values=keywords,
+    state="readonly",
+    width=20
+)
 combo.pack(pady=5)
 
-# 추천 버튼
-btn = tk.Button(card, text="추천 🍚", command=recommend,
-                bg=ACCENT_BRICK, fg="white", activebackground="#8C3A25",
-                activeforeground="white", relief="raised",
-                font=(base_font, 11, "bold"), padx=10, pady=4)
-btn.pack(pady=10)
+ttk.Button(recommend_frame, text="추천", command=recommend).pack(pady=10)
 
-# 결과 라벨
-result_label = tk.Label(card, text="", bg=CARD_BG, fg=ACCENT_BRICK,
-                        font=(base_font, 12, "bold"), wraplength=360, justify="center")
-result_label.pack(pady=(10, 5))
+result_label = ttk.Label(recommend_frame, text="")
+result_label.pack(pady=10)
 
-# 푸터
-tk.Label(card, text="따뜻~하게 한 그릇 하고 가이소 😊", bg=CARD_BG,
-         fg=SUBTEXT, font=(base_font, 9)).pack(side="bottom", pady=8)
+# 식당 리스트 화면 프레임
+list_frame = ttk.Frame(root, padding=10)
+
+ttk.Label(list_frame, text="부산 국밥집 리스트 (팀이 선정한 10곳)").pack(pady=(0, 5))
+
+columns = ("name", "area")
+tree = ttk.Treeview(
+    list_frame,
+    columns=columns,
+    show="headings",
+    height=8
+)
+
+tree.heading("name", text="가게 이름")
+tree.heading("area", text="지역")
+
+tree.column("name", width=260)
+tree.column("area", width=150, anchor="center")
+
+for r in RESTAURANTS:
+    tree.insert("", tk.END, values=(r["name"], r["area"]))
+
+tree.pack(fill="both", expand=True, pady=5)
+
+# 기본 화면은 추천 화면
+recommend_frame.pack(fill="both", expand=True)
 
 root.mainloop()
