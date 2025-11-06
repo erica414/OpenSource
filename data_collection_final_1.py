@@ -10,8 +10,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException  # TimeoutException을 import
 
-# 국밥집 리뷰창 URL
-url = 'https://www.google.com/maps/place/%EC%88%98%EB%9D%BC%EB%8F%BC%EC%A7%80%EA%B5%AD%EB%B0%A5/data=!4m8!3m7!1s0x3568ecf12202becd:0x58eb4205927036a6!8m2!3d35.1360893!4d129.0993841!9m1!1b1!16s%2Fg%2F11bwymmvb8?entry=ttu&g_ep=EgoyMDI1MTAyOC4wIKXMDSoASAFQAw%3D%3D'
+# 국밥집 리뷰창 URL(입력받음)
+url = input("데이터를 수집할 국밥집(리뷰창) url : ")
 # 웹드라이버 실행
 wd = webdriver.Chrome()
 wd.get(url)
