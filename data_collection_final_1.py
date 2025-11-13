@@ -15,20 +15,38 @@ url = input("데이터를 수집할 국밥집(리뷰창) url : ")
 # 웹드라이버 실행
 wd = webdriver.Chrome()
 wd.get(url)
-time.sleep(2)
+
+wait = WebDriverWait(wd, 10)
 
 # 정렬버튼 클릭 -> 최신순
 address = "#QA0Szd > div > div > div.w6VYqd > div:nth-child(2) > div > div.e07Vkf.kA9KIf > div > div > div.m6QErb.DxyBCb.kA9KIf.dS8AEf.XiKgde > div.m6QErb.Pf6ghf.XiKgde.KoSBEe.ecceSd.tLjsW > div.TrU0dc.kdfrQc.NUqjXc > button"
-wd.find_element(By.CSS_SELECTOR, address).click()
-time.sleep(2)
 
-address1 = "#action-menu > div > div:nth-child(2)"
-wd.find_element(By.CSS_SELECTOR, address1).click()
-time.sleep(2)
+sort_btn = wait.until(
+    EC.element_to_be_clickable((By.CSS_SELECTOR, address))
+)
+sort_btn.click()
 
-scrollable_div = wd.find_element(By.CSS_SELECTOR,
-    "#QA0Szd > div > div > div.w6VYqd > div:nth-child(2) > div > div.e07Vkf.kA9KIf > div > div > div.m6QErb.DxyBCb.kA9KIf.dS8AEf.XiKgde")
-time.sleep(2)
+# 최신순 버튼 클릭
+latest_btn = wait.until(
+    EC.element_to_be_clickable((
+        By.XPATH,
+        "//div[@role='menuitemradio' and .//div[contains(text(), '최신순')]]"
+    ))
+)
+
+# 일반 클릭
+try:
+    latest_btn.click()
+except:
+    # 혹시 또 가로채이면 JS로 강제 클릭
+    wd.execute_script("arguments[0].click();", latest_btn)
+
+scrollable_div = wait.until(
+    EC.presence_of_element_located((
+        By.CSS_SELECTOR,
+        "#QA0Szd > div > div > div.w6VYqd > div:nth-child(2) > div > div.e07Vkf.kA9KIf > div > div > div.m6QErb.DxyBCb.kA9KIf.dS8AEf.XiKgde"
+    ))
+)
 
 #리뷰 하나당 개수를 세기 위한 클래스 이름
 review_selector = "div.jJc9Ad"
