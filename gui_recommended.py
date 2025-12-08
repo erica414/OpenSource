@@ -2,17 +2,15 @@ import tkinter as tk
 from tkinter import ttk
 import pandas as pd
 import os
-from pathlib import Path   # ← 추가
-
-BASE_DIR = Path(__file__).resolve().parent
 
 # =========================================================
 # 데이터 처리 및 추천 알고리즘
 # =========================================================
 class GukbapRecommender:
-    def __init__(self, csv_filename='keyword.csv'):
-        # 1. CSV 파일 경로 설정 (파일 위치 기준)
-        self.csv_path = (BASE_DIR / csv_filename).resolve()
+    def __init__(self, csv_filename='deundeun_keyword_ox_df.csv'):
+        # 1. CSV 파일 경로 설정
+        current_dir = os.getcwd()
+        self.csv_path = os.path.join(current_dir, csv_filename)
         
         # 2. 데이터 로드
         self.df = self._load_and_preprocess()
@@ -47,28 +45,20 @@ class GukbapRecommender:
 
     def _load_and_preprocess(self):
         """CSV를 읽어 '상호명 + 키워드 컬럼들(O/X)' 형태의 DataFrame으로 반환"""
-        if not self.csv_path.exists():
+        if not os.path.exists(self.csv_path):
             # 파일이 없으면 빈 DataFrame
             return pd.DataFrame(columns=['상호명'])
-
         try:
-            # 1차: 그냥 읽어 보고, 이미 '상호명' 컬럼이 있으면 그대로 사용
-            raw_df = pd.read_csv(self.csv_path)
-
-            if '상호명' in raw_df.columns:
-                df = raw_df.copy()
-            else:
-                # 2차: 예전 형식(행=키워드, 열=식당)이라고 가정하고 transpose
-                raw_df = pd.read_csv(self.csv_path, index_col=0)
-                df = raw_df.transpose()
-                df = df.reset_index().rename(columns={'index': '상호명'})
-
+            # 원본 CSV는 행: 키워드, 열: 식당일 가능성이 높으므로 transpose
+            raw_df = pd.read_csv(self.csv_path, index_col=0)
+            df = raw_df.transpose()
+            # NaN은 'X'로 채우기
             df.fillna('X', inplace=True)
+            df = df.reset_index().rename(columns={'index': '상호명'})
             return df
         except Exception as e:
             print("CSV 로드 중 오류:", e)
             return pd.DataFrame(columns=['상호명'])
-
 
     def get_recommendations(self, selected_keywords):
         """
@@ -116,7 +106,7 @@ class RecommendationWindow:
         self.parent = parent
         self.window = tk.Toplevel(parent)
         self.window.title("추천 결과")
-        self.window.geometry("1400x750")   # 🔹 메인과 동일한 크기
+        self.window.geometry("500x650")
         self.window.configure(bg="white")
 
         # 🔹 추천창 X 버튼 눌렀을 때 → 메인으로 복귀
@@ -137,7 +127,7 @@ class RecommendationWindow:
     def build_ui(self):
         # 1. 헤더 영역
         header = tk.Frame(self.window, bg="white")
-        header.pack(fill="x", padx=40, pady=20)
+        header.pack(fill="x", padx=20, pady=20)
         
         count = len(self.results)
         title_text = f"총 {count}개의 맛집 발견!" if count > 0 else "조건에 맞는 맛집이 없어요 ㅠㅠ"
@@ -149,15 +139,14 @@ class RecommendationWindow:
 
         # 2. 스크롤 가능한 리스트 영역
         container = tk.Frame(self.window, bg="white")
-        container.pack(fill="both", expand=True, padx=40, pady=(0, 20))
+        container.pack(fill="both", expand=True, padx=15, pady=(0, 15))
 
         canvas = tk.Canvas(container, bg="white", highlightthickness=0)
         scrollbar = ttk.Scrollbar(container, orient="vertical", command=canvas.yview)
         self.scrollable_frame = tk.Frame(canvas, bg="white")
 
         self.scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        # 🔹 넓은 화면에 맞게 width 조금 키움
-        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw", width=1200)
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw", width=450)
         canvas.configure(yscrollcommand=scrollbar.set)
 
         canvas.pack(side="left", fill="both", expand=True)
@@ -184,7 +173,7 @@ class RecommendationWindow:
 
     def create_restaurant_card(self, row):
         """각 식당 정보를 카드 형태로 표시"""
-        # 카드 프레임
+        # 카드 프레임 (깔끔한 흰색 + 테두리)
         card = tk.Frame(self.scrollable_frame, bg="white", bd=1, relief="solid")
         card.pack(fill="x", pady=6, ipady=5)
 
@@ -199,17 +188,18 @@ class RecommendationWindow:
         if not feature_text:
             feature_text = "기본 정보"
 
+        # 파란색 텍스트로 특징 표시
         tk.Label(
             card,
             text=feature_text,
             font=("맑은 고딕", 9),
             fg="#448aff",
             bg="white", 
-            wraplength=1100,   # 🔹 넓은 카드에 맞춰 줄바꿈 폭 늘림
+            wraplength=420,
             justify="left"
         ).pack(anchor="w", padx=12, pady=(0, 8))
 
-        # 🔍 자세히 보기 버튼
+        # 🔍 자세히 보기 버튼 (여기서 open_detail_window 호출)
         tk.Button(
             card,
             text="자세히 보기",
@@ -224,26 +214,45 @@ class RecommendationWindow:
     # =====================================================
     def open_detail_window(self, row):
         """추천 카드에서 선택한 식당의 상세창을 연다."""
-        from gui_detail import RestaurantDetail  # 순환 참조 방지용
+        # 순환 참조 방지를 위해 여기서 import
+        from gui_detail import RestaurantDetail
 
         name = row.get("상호명", "이름 없음")
+        keywords = [col for col in row.index if col != "상호명" and row[col] == "O"]
 
-        # CSV에서 저장된 상세정보 불러오기
-        data = RestaurantDetail.load_from_csv(name)
+        # 지금은 키워드 정보만 넘겨주고,
+        # 추후 restaurant_info_template.csv 와 병합해서 주소/메뉴/평점 등을 채울 예정
+        data = {
+            "name": name,
+            "keywords": keywords,
+            "tags": keywords,
+            "phone": None,
+            "address": None,
+            "parking": False,
+            "hours_str": None,
+            "map_url": None,
+            "sns_url": None,
+            "menu": [],
+            "photo_path": None,
+            "rating": None,
+            "review_count": None,
+            "price_range": None,
+        }
 
-        # CSV에 정보가 아직 없으면, 최소한 이름/키워드만 채워서 넘겨주기
-        if not data:
-            keywords = [
-                col for col in row.index
-                if col != "상호명" and row[col] == "O"
-            ]
-            data = {
-                "name": name,
-                "keywords": keywords,
-            }
+        # 상세창 생성
+        detail_win = tk.Toplevel(self.window)
+        detail_win.title(name)
+        detail_win.geometry("600x700")
 
-        # 🔹 추천창은 숨기고
+        # 추천창은 잠시 숨겨서 "화면 전환" 느낌
         self.window.withdraw()
 
-        # 🔹 디테일 창을 띄우면, 디테일에서 닫을 때 self.window 를 다시 살려줄 거야
-        RestaurantDetail(self.window, data)
+        def on_detail_close():
+            # 상세창 닫으면 다시 추천창 보여주기
+            detail_win.destroy()
+            self.window.deiconify()
+
+        detail_win.protocol("WM_DELETE_WINDOW", on_detail_close)
+
+        detail = RestaurantDetail(detail_win, data)
+        detail.pack(fill="both", expand=True)
