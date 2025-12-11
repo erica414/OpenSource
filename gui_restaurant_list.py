@@ -116,6 +116,11 @@ class RestaurantListWindow:
         self.card_area = tk.Frame(canvas, bg="white")
         self.canvas_window = canvas.create_window((0, 0), window=self.card_area, anchor="nw")
 
+        canvas.bind_all(
+            "<MouseWheel>",
+            lambda e: canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
+        )
+        
         # 스크롤 영역 자동 조정 + 폭 맞추기
         self.card_area.bind(
             "<Configure>",
@@ -251,7 +256,3 @@ class RestaurantListWindow:
         """리스트 X 버튼 → 메인으로 복귀."""
         self.parent.deiconify()
         self.window.destroy()
-
-        detail = RestaurantDetail(win, data)
-        detail.pack(fill="both", expand=True)
-
