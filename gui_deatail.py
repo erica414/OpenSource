@@ -131,13 +131,18 @@ class RestaurantDetail(tk.Toplevel):
         canvas.pack(side="left", fill="both", expand=True)
         scroll_y.pack(side="right", fill="y")
 
+        canvas.bind_all(
+            "<MouseWheel>",
+            lambda e: canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
+        )
+
         main = tk.Frame(canvas, bg="white")
         canvas_window = canvas.create_window((0, 0), window=main, anchor="nw")
 
         main.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         canvas.bind("<Configure>", lambda e: canvas.itemconfig(canvas_window, width=e.width))
 
-        # ===== 헤더 (이미지 + 이름 + 키워드 요약 + 버튼) =====
+        # ===== 헤더 (이미지 + 이름 + 별점 + 버튼) =====
         header = tk.Frame(main, bg="white")
         header.pack(fill="x", padx=20, pady=(15, 10))
 
@@ -179,23 +184,14 @@ class RestaurantDetail(tk.Toplevel):
         name = self.data.get("name", "가게 이름")
         tk.Label(info, text=name, font=("맑은 고딕", 18, "bold"), bg="white").pack(anchor="w")
 
-        # 상단 키워드 요약
-        tags = self.data.get("tags") or self.data.get("keywords") or ""
-        if isinstance(tags, str):
-            tag_list = [t for t in tags.split("|") if t.strip()]
-        elif isinstance(tags, list):
-            tag_list = tags
-        else:
-            tag_list = []
-
-        tag_text = " · ".join(tag_list)
+        # ==== 상단 별점 표시 ====
+        rating_text = self._format_rating_text()
         tk.Label(
             info,
-            text=tag_text if tag_text else "키워드 정보 없음",
-            font=("맑은 고딕", 10),
-            fg="#555555",
+            text=rating_text,
+            font=("맑은 고딕", 11),
+            fg="#444444",
             bg="white",
-            wraplength=600,
             justify="left"
         ).pack(anchor="w", pady=(4, 0))
 
@@ -221,10 +217,42 @@ class RestaurantDetail(tk.Toplevel):
             command=self.open_sns
         ).pack(side="left", padx=(0, 5))
 
-        # ===== 기본 정보 =====
+        # ===== 기본 정보 / 메뉴 / 키워드 / 메모 =====
         self._build_basic_info(main)
         self._build_menu(main)
         self._build_keywords(main)
+        self._build_memo(main)  # ← 리뷰 키워드 아래에 메모 섹션
+
+    # ---------- 별점 텍스트 포맷 ----------
+    def _format_rating_text(self) -> str:
+        """
+        self.data['rating'] 값을 이용해
+        ★★★★☆ 4.3 같은 문자열을 만들어 반환.
+        rating 값이 없거나 잘못된 경우 안내 문구.
+        """
+        raw = self.data.get("rating")
+        rating = None
+
+        if isinstance(raw, (int, float)):
+            rating = float(raw)
+        elif isinstance(raw, str) and raw.strip():
+            try:
+                rating = float(raw.strip())
+            except ValueError:
+                rating = None
+
+        if rating is None:
+            return "별점 정보 없음"
+
+        # 0~5 범위로 클램프
+        rating = max(0.0, min(5.0, rating))
+        # 별 개수는 반올림해서 사용 (4.3 → 4개, 4.7 → 5개)
+        full = int(round(rating))
+        full = max(0, min(5, full))
+        empty = 5 - full
+
+        stars = "★" * full + "☆" * empty
+        return f"{stars} {rating:.1f}"
 
     # ---------- 섹션들 ----------
     def _build_basic_info(self, parent):
@@ -252,8 +280,8 @@ class RestaurantDetail(tk.Toplevel):
         row("주소", "address")
         row("주차", "parking")
         row("영업", "hours_str")
-        if "memo" in self.data:
-            row("비고", "memo")
+        # 기존: if "memo" in self.data: row("비고", "memo")
+        # → 메모는 맨 아래 별도 섹션으로 이동
 
     def _build_menu(self, parent):
         frame = tk.Frame(parent, bg="white")
@@ -317,7 +345,7 @@ class RestaurantDetail(tk.Toplevel):
 
     def _build_keywords(self, parent):
         frame = tk.Frame(parent, bg="white")
-        frame.pack(fill="x", padx=20, pady=(10, 20))
+        frame.pack(fill="x", padx=20, pady=(10, 5))
 
         tk.Label(frame, text="리뷰 키워드", font=("맑은 고딕", 12, "bold"),
                  bg="white").pack(anchor="w", pady=(0, 4))
@@ -358,6 +386,32 @@ class RestaurantDetail(tk.Toplevel):
             )
             lbl.pack(side="left", padx=3, pady=3)
 
+    def _build_memo(self, parent):
+        """비고 영역."""
+        memo = self.data.get("memo")
+        if not isinstance(memo, str) or not memo.strip():
+            return  # 메모 없으면 섹션 자체를 만들지 않음
+
+        frame = tk.Frame(parent, bg="white")
+        frame.pack(fill="x", padx=20, pady=(5, 20))
+
+        tk.Label(frame, text="비고", font=("맑은 고딕", 12, "bold"),
+                 bg="white").pack(anchor="w", pady=(0, 4))
+
+        box = tk.Frame(frame, bg="#fafafa", bd=1, relief="solid")
+        box.pack(fill="x")
+
+        tk.Label(
+            box,
+            text=memo.strip(),
+            bg="#fafafa",
+            font=("맑은 고딕", 9),
+            fg="#444444",
+            wraplength=1100,
+            justify="left",
+            anchor="w"
+        ).pack(fill="x", padx=10, pady=6)
+
     # ---------- 링크 열기 ----------
     def open_map(self):
         url = self.data.get("map_url")
@@ -378,5 +432,4 @@ class RestaurantDetail(tk.Toplevel):
         """디테일 창을 닫을 때 → 부모(리스트 or 추천) 다시 보이게."""
         self.parent_window.deiconify()
         self.destroy()
-
 
