@@ -132,6 +132,13 @@
 
 ## 📘 사용 방법 (How to Use)
 
+### 1) 필수 모듈 설치
+```
+pip install pillow pandas
+```
+- `pillow` → 이미지 로딩 (Image, ImageTk)
+- `pandas` → CSV 데이터 처리
+
 ### 1) 실행
 ```bash
 python gui_main.py
